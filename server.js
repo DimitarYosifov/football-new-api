@@ -20,7 +20,7 @@ app.listen(port, function () { console.log(`app started on port: ${port}`);});
 firebase.initializeApp(config_firebase);
 
 app.get('/test', function (req, res, next) {
-    res.send('APIworks');
+    res.send('APIworks- connected to github');
 });
 
 app.post('/login', async (req, res) => {

@@ -9,12 +9,8 @@ require('firebase/auth');
 require('firebase/database');
 let port = process.env.PORT || 8000;
 app.use(bodyParser.json());
-
 app.use(bodyParser.urlencoded({ extended: false }));
 
-app.get('/test', function (req, res, next) {
-    res.send('APIworks');
-});
 const config_firebase = {
     apiKey: 'AIzaSyB6CoLU9BDQyk998IlqyIY7cVwSR-fvsSw',
     authDomain: 'football-d4256.firebaseapp.com',
@@ -25,7 +21,11 @@ app.listen(port, function () { console.log(`app started on port: ${port}`);});
 
 firebase.initializeApp(config_firebase);
 
-app.post('/getAllClubsData', async (req, res) => {
+app.get('/test', function (req, res, next) {
+    res.send('APIworks');
+});
+
+app.get('/getAllClubsData', async (req, res) => {
     firebase.database().ref("/clubs/").once('value').then(function (snapshot) {
         res.set('Content-Type', 'application/json');
         res.status(200);

@@ -178,7 +178,7 @@ app.post('/storageData', async (req, res) => {
     });
 });
 
-app.post('/getAllClubsData', async (req, res) => {
+app.get('/getAllClubsData', async (req, res) => {
     firebase.database().ref("/clubs/").once('value').then(function (snapshot) {
         res.set('Content-Type', 'application/json');
         res.status(200);

@@ -6,6 +6,8 @@ const firebase = require("firebase/app");
 require('firebase/auth');
 require('firebase/database');
 let port = process.env.PORT || 8000;
+const cors = require('cors')
+app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 

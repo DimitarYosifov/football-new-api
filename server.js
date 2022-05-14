@@ -1,3 +1,5 @@
+
+const { Server } = require('ws');
 const express = require('express');
 const bodyParser = require('body-parser');
 const app = express();
@@ -17,7 +19,7 @@ const config_firebase = {
     databaseURL: 'football-d4256.firebaseio.com',
     storageBucket: 'football-d4256.appspot.com'
 };
-app.listen(port, function () { console.log(`app started on port: ${port}`);});
+// app.listen(port, function () { console.log(`app started on port: ${port}`);});
 
 firebase.initializeApp(config_firebase);
 
@@ -298,4 +300,34 @@ user = function (callback) {
         }
     });
 };
+const server = app.listen(port, function () {
+    console.log('listening on port ', server.address().port);
+});
+
+const wss = new Server({ server });
+let activeUsers = {testWorking: true};
+wss.on('connection', (ws) => {
+    ws.on('message', (message) => {
+        console.log("someone joined!");
+        if (JSON.parse(message).user) {
+            // let user = JSON.parse(message).user;
+            // ws._sockname = user;
+            // activeUsers[user] = true;
+            wss.clients.forEach(client => { client.send(Buffer.from(JSON.stringify(activeUsers))) });
+        }
+        else {
+            wss.clients.forEach(client => { client.send("Api ws is OK") });
+            // wss.clients.forEach(client => { client.send(message) });
+            // if (client != ws) {}
+        }
+    });
+    ws.on('error', (error) => {
+        console.log('received: %s', error);
+    });
+    ws.on('close', () => {
+        delete activeUsers[ws._sockname];
+        wss.clients.forEach(client => { client.send(Buffer.from(JSON.stringify(activeUsers))) });
+        console.log("CLOSED!");
+    });
+});
 

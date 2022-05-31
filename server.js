@@ -305,29 +305,35 @@ const server = app.listen(port, function () {
 });
 
 const wss = new Server({ server });
-let activeUsers = {testWorking: true};
+let activeUsers = { users: {} };
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
-        console.log("someone joined!");
         if (JSON.parse(message).user) {
-            // let user = JSON.parse(message).user;
-            // ws._sockname = user;
-            // activeUsers[user] = true;
-            wss.clients.forEach(client => { client.send(Buffer.from(JSON.stringify(activeUsers))) });
+            console.log(`${JSON.parse(message).user} joined!`);
+            let user = JSON.parse(message).user;
+            let team = JSON.parse(message).team;
+            ws._sockname = user;
+            activeUsers.users[user] = team;
+            wss.clients.forEach(client => {
+                // if (client != ws) {
+                // client.send(message); // works!!!!
+                client.send(Buffer.from(JSON.stringify(activeUsers)));
+            });
+            console.log(`Users online => ${JSON.stringify(activeUsers)}`);
         }
         else {
             wss.clients.forEach(client => { client.send("Api ws is OK") });
             // wss.clients.forEach(client => { client.send(message) });
-            // if (client != ws) {}
         }
     });
     ws.on('error', (error) => {
         console.log('received: %s', error);
     });
     ws.on('close', () => {
-        delete activeUsers[ws._sockname];
-        wss.clients.forEach(client => { client.send(Buffer.from(JSON.stringify(activeUsers))) });
+        delete activeUsers.users[ws._sockname];
+        wss.clients.forEach(client => {
+            client.send(Buffer.from(JSON.stringify(activeUsers)));
+        });
         console.log("CLOSED!");
     });
 });
-

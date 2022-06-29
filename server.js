@@ -304,31 +304,86 @@ const server = app.listen(port, function () {
     console.log('listening on port ', server.address().port);
 });
 
+
+/**
+ * W E B   S O C K E T   P A R T
+ */
 const wss = new Server({ server });
 let activeUsers = { users: {} };
+let activeGames = [];
 
 wss.on('connection', (ws) => {
+    // console.log(ws);
     ws.on('message', (message) => {
-        console.log(`msg=>${message}`);
+        // console.log(`msg=>${message}`);
+
+
+
+        // new player joined or club selection changed here
         if (JSON.parse(message).user) {
-            // new player joined or club selection changed here
-            console.log(`${JSON.parse(message).user.user} joined!`);
+            // console.log(`${JSON.parse(message).user.user} joined!`);
+
             let user = JSON.parse(message).user.user;
             let team = JSON.parse(message).user.team;
             let selectedSlot = JSON.parse(message).user.selectedSlot;
-            ws._sockname = user;
+            let readyConfirmed = JSON.parse(message).user.readyConfirmed; // todo...
+            let isHome = JSON.parse(message).user.isHome;
+
+            if (!ws._sockname) {
+                ws._sockname = user;
+            }
             activeUsers.users[user] = {
                 team: team,
-                selectedSlot: selectedSlot
+                selectedSlot: selectedSlot,
+                readyConfirmed: readyConfirmed,
+                isHome: isHome
+                // isInGameNow:false
             };
             wss.clients.forEach(client => {
+                console.log(client.stream_id);
+
                 // if (client != ws) {
                 // client.send(message); // works!!!!
+                // console.log( ws._sockname);
+                // console.log(`client._sockname...`);
+                // console.log(client._sockname);
                 client.send(Buffer.from(JSON.stringify(activeUsers)));
             });
-            console.log(`Users online => ${JSON.stringify(activeUsers)}`);
+
+
+            //check if two players confirmed to start game here...
+
+            for (let index = 0; index < 8; index += 2) {
+                let homeTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index)[0];
+                let awayTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index + 1)[0];
+
+                console.log(homeTeam);
+                console.log(awayTeam);
+
+                if (homeTeam && awayTeam) {
+                    console.log("----------------------");
+                    // console.log([...wss.clients]);
+                     // console.log(Object.keys(wss.clients).find(c => c._sockname === homeTeam));
+                    let player1_WS = [...wss.clients].find(c => c._sockname === homeTeam);
+                    let player2_WS = [...wss.clients].find(c => c._sockname === awayTeam);
+
+                    console.log(player1_WS);
+                    console.log(player2_WS);
+                    // console.log("----------------------");
+                    // console.log(player2_WS);
+
+                    
+                    player1_WS.send(Buffer.from(JSON.stringify({ ok: "true ws1" })));
+                    player2_WS.send(Buffer.from(JSON.stringify({ ok: "true ws2" })));
+                }
+
+            }
+            console.log(`Users online => ${JSON.stringify(activeUsers.users)}`);
         }
-        else {
+        // two players confirmed to start game here...
+        else if (JSON.parse(message).newGame) {
+            // console.log(`msg=>${JSON.parse(message).newGame}`);
+            // console.log(`selectedSlot=>${JSON.parse(message).newGame.player1.selectedSlot}`);
             //TODO... wss.clients.forEach(client => { client.send("Api ws is OK") });
         }
     });
@@ -343,4 +398,6 @@ wss.on('connection', (ws) => {
         console.log(`Users online => ${JSON.stringify(activeUsers)}`);
         console.log("CLOSED!");
     });
+
+
 });

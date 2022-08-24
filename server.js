@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const firebase = require("firebase/app");
 require('firebase/auth');
 require('firebase/database');
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 9000;
 const cors = require('cors')
 app.use(cors())
 app.use(bodyParser.json());
@@ -225,7 +225,7 @@ app.post('/getClubsPlayers', async (req, res) => {
         res.json({
             clubData: Object.values(snapshot.val())[0]
         });
-    });
+    })
 });
 
 app.post('/getClubData', async (req, res) => {
@@ -268,7 +268,10 @@ app.post('/getPlayerLineUp', async (req, res) => {
         res.json({
             players: Object.values(snapshot.val())[0]
         });
-    });
+
+    }), function (error) {
+        console.log(error);
+    }
 });
 
 app.post('/deleteProgress', async (req, res) => {
@@ -405,6 +408,8 @@ wss.on('connection', (ws) => {
         console.log('received: %s', error);
     });
     ws.on('close', () => {
+        // IMPORTANT...
+        // TODO - clear incomplete games, as well for client after game is finished!!!!!
         delete activeUsers.users[ws._sockname];
         wss.clients.forEach(client => {
             client.send(Buffer.from(JSON.stringify(activeUsers)));

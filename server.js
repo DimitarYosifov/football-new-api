@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const firebase = require("firebase/app");
 require('firebase/auth');
 require('firebase/database');
-let port = process.env.PORT || 8000;
+const port = process.env.PORT || 8000;
 const cors = require('cors')
 app.use(cors())
 app.use(bodyParser.json());
@@ -264,7 +264,6 @@ app.post('/playersParams', async (req, res) => {
 app.post('/getPlayerLineUp', async (req, res) => {
     let user = req.body.user;
     firebase.database().ref("/users/" + user + '/lineUp/').once('value').then(function (snapshot) {
-        res.set('Content-Type', 'application/json');
         res.status(200);
         res.json({
             players: Object.values(snapshot.val())[0]
@@ -310,19 +309,15 @@ const server = app.listen(port, function () {
  */
 const wss = new Server({ server });
 let activeUsers = { users: {} };
-let activeGames = [];
+let activeGames = {};
 
 wss.on('connection', (ws) => {
     // console.log(ws);
     ws.on('message', (message) => {
         // console.log(`msg=>${message}`);
-
-
-
         // new player joined or club selection changed here
         if (JSON.parse(message).user) {
             // console.log(`${JSON.parse(message).user.user} joined!`);
-
             let user = JSON.parse(message).user.user;
             let team = JSON.parse(message).user.team;
             let selectedSlot = JSON.parse(message).user.selectedSlot;
@@ -349,10 +344,7 @@ wss.on('connection', (ws) => {
                 // console.log(client._sockname);
                 client.send(Buffer.from(JSON.stringify(activeUsers)));
             });
-
-
             //check if two players confirmed to start game here...
-
             for (let index = 0; index < 8; index += 2) {
                 let homeTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index)[0];
                 let awayTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index + 1)[0];
@@ -363,18 +355,40 @@ wss.on('connection', (ws) => {
                 if (homeTeam && awayTeam) {
                     console.log("----------------------");
                     // console.log([...wss.clients]);
-                     // console.log(Object.keys(wss.clients).find(c => c._sockname === homeTeam));
+                    // console.log(Object.keys(wss.clients).find(c => c._sockname === homeTeam));
                     let player1_WS = [...wss.clients].find(c => c._sockname === homeTeam);
                     let player2_WS = [...wss.clients].find(c => c._sockname === awayTeam);
 
-                    console.log(player1_WS);
-                    console.log(player2_WS);
+                    // console.log(player1_WS);
+                    // console.log(player2_WS);
                     // console.log("----------------------");
                     // console.log(player2_WS);
 
-                    
-                    player1_WS.send(Buffer.from(JSON.stringify({ ok: "true ws1" })));
-                    player2_WS.send(Buffer.from(JSON.stringify({ ok: "true ws2" })));
+
+                    const newGameID = `${homeTeam}${awayTeam}`;
+                    const club1 = activeUsers.users[homeTeam].team;
+                    const club2 = activeUsers.users[awayTeam].team;
+
+                    activeGames[newGameID] = true;
+
+                    console.log(`${homeTeam} vs ${awayTeam}`);
+
+                    player1_WS.send(
+                        Buffer.from(JSON.stringify({
+                            newGame: {
+                                id: newGameID,
+                                isHome: true,
+                                opponent: club2
+                            }
+                        })));
+                    player2_WS.send(
+                        Buffer.from(JSON.stringify({
+                            newGame: {
+                                id: newGameID,
+                                isHome: false,
+                                opponent: club1
+                            }
+                        })));
                 }
 
             }

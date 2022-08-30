@@ -317,7 +317,7 @@ let activeGames = {};
 wss.on('connection', (ws) => {
     // console.log(ws);
     ws.on('message', (message) => {
-        // console.log(`msg=>${message}`);
+        console.log(`msg=>${message}`);
         // new player joined or club selection changed here
         if (JSON.parse(message).user) {
             // console.log(`${JSON.parse(message).user.user} joined!`);
@@ -334,7 +334,8 @@ wss.on('connection', (ws) => {
                 team: team,
                 selectedSlot: selectedSlot,
                 readyConfirmed: readyConfirmed,
-                isHome: isHome
+                isHome: isHome,
+                isPlaying: false
                 // isInGameNow:false
             };
             wss.clients.forEach(client => {
@@ -345,17 +346,28 @@ wss.on('connection', (ws) => {
                 // console.log( ws._sockname);
                 // console.log(`client._sockname...`);
                 // console.log(client._sockname);
-                client.send(Buffer.from(JSON.stringify(activeUsers)));
+                console.log("====================================");
+                console.log(activeUsers.users[client._sockname].isPlaying);
+                console.log("====================================");
+                if (activeUsers.users[client._sockname].isPlaying === false) {
+                    console.log("SENT tov " + client._sockname);
+                    client.send(Buffer.from(JSON.stringify(activeUsers)));
+                }
             });
             //check if two players confirmed to start game here...
             for (let index = 0; index < 8; index += 2) {
                 let homeTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index)[0];
                 let awayTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index + 1)[0];
 
+
+
                 console.log(homeTeam);
                 console.log(awayTeam);
 
                 if (homeTeam && awayTeam) {
+                    if (activeUsers.users[homeTeam].isPlaying || activeUsers.users[awayTeam].isPlaying) {
+                        return;
+                    }
                     console.log("----------------------");
                     // console.log([...wss.clients]);
                     // console.log(Object.keys(wss.clients).find(c => c._sockname === homeTeam));
@@ -368,9 +380,12 @@ wss.on('connection', (ws) => {
                     // console.log(player2_WS);
 
 
-                    const newGameID = `${homeTeam}${awayTeam}`;
+                    const newGameID = `${homeTeam}/${awayTeam}`;
                     const club1 = activeUsers.users[homeTeam].team;
                     const club2 = activeUsers.users[awayTeam].team;
+
+                    activeUsers.users[homeTeam].isPlaying = true;
+                    activeUsers.users[awayTeam].isPlaying = true;
 
                     activeGames[newGameID] = true;
 
@@ -403,13 +418,32 @@ wss.on('connection', (ws) => {
             // console.log(`selectedSlot=>${JSON.parse(message).newGame.player1.selectedSlot}`);
             //TODO... wss.clients.forEach(client => { client.send("Api ws is OK") });
         }
+        else if (JSON.parse(message).grid) {
+            console.log("GRID!!");
+
+            let grid = JSON.parse(message).grid;
+            let opponentID = JSON.parse(message).opponentID;
+
+            if (activeUsers.users[opponentID]) {
+                console.log(grid);
+                console.log(`data will be send to ${opponentID}`);
+                let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                opponent.send(
+                    Buffer.from(JSON.stringify({
+                        grid: grid
+                    })));
+            }
+        }
     });
+
     ws.on('error', (error) => {
         console.log('received: %s', error);
     });
+
     ws.on('close', () => {
         // IMPORTANT...
         // TODO - clear incomplete games, as well for client after game is finished!!!!!
+       //todo - reset isPlaying property
         delete activeUsers.users[ws._sockname];
         wss.clients.forEach(client => {
             client.send(Buffer.from(JSON.stringify(activeUsers)));

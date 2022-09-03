@@ -306,7 +306,6 @@ const server = app.listen(port, function () {
     console.log('listening on port ', server.address().port);
 });
 
-
 /**
  * W E B   S O C K E T   P A R T
  */
@@ -315,12 +314,12 @@ let activeUsers = { users: {} };
 let activeGames = {};
 
 wss.on('connection', (ws) => {
-    // console.log(ws);
     ws.on('message', (message) => {
-        console.log(`msg=>${message}`);
-        // new player joined or club selection changed here
-        if (JSON.parse(message).user) {
-            // console.log(`${JSON.parse(message).user.user} joined!`);
+        /**
+         * new user entered PvP room or
+         * another user selected club
+         */
+        newUserOrClubSelectionChange = () => {
             let user = JSON.parse(message).user.user;
             let team = JSON.parse(message).user.team;
             let selectedSlot = JSON.parse(message).user.selectedSlot;
@@ -339,18 +338,7 @@ wss.on('connection', (ws) => {
                 // isInGameNow:false
             };
             wss.clients.forEach(client => {
-                console.log(client.stream_id);
-
-                // if (client != ws) {
-                // client.send(message); // works!!!!
-                // console.log( ws._sockname);
-                // console.log(`client._sockname...`);
-                // console.log(client._sockname);
-                console.log("====================================");
-                console.log(activeUsers.users[client._sockname].isPlaying);
-                console.log("====================================");
                 if (activeUsers.users[client._sockname].isPlaying === false) {
-                    console.log("SENT tov " + client._sockname);
                     client.send(Buffer.from(JSON.stringify(activeUsers)));
                 }
             });
@@ -359,26 +347,13 @@ wss.on('connection', (ws) => {
                 let homeTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index)[0];
                 let awayTeam = Object.keys(activeUsers.users).filter(u => activeUsers.users[u].selectedSlot === index + 1)[0];
 
-
-
-                console.log(homeTeam);
-                console.log(awayTeam);
-
                 if (homeTeam && awayTeam) {
                     if (activeUsers.users[homeTeam].isPlaying || activeUsers.users[awayTeam].isPlaying) {
                         return;
                     }
-                    console.log("----------------------");
-                    // console.log([...wss.clients]);
-                    // console.log(Object.keys(wss.clients).find(c => c._sockname === homeTeam));
+
                     let player1_WS = [...wss.clients].find(c => c._sockname === homeTeam);
                     let player2_WS = [...wss.clients].find(c => c._sockname === awayTeam);
-
-                    // console.log(player1_WS);
-                    // console.log(player2_WS);
-                    // console.log("----------------------");
-                    // console.log(player2_WS);
-
 
                     const newGameID = `${homeTeam}/${awayTeam}`;
                     const club1 = activeUsers.users[homeTeam].team;
@@ -388,8 +363,6 @@ wss.on('connection', (ws) => {
                     activeUsers.users[awayTeam].isPlaying = true;
 
                     activeGames[newGameID] = true;
-
-                    console.log(`${homeTeam} vs ${awayTeam}`);
 
                     player1_WS.send(
                         Buffer.from(JSON.stringify({
@@ -408,31 +381,52 @@ wss.on('connection', (ws) => {
                             }
                         })));
                 }
-
             }
-            console.log(`Users online => ${JSON.stringify(activeUsers.users)}`);
         }
-        // two players confirmed to start game here...
-        else if (JSON.parse(message).newGame) {
-            // console.log(`msg=>${JSON.parse(message).newGame}`);
-            // console.log(`selectedSlot=>${JSON.parse(message).newGame.player1.selectedSlot}`);
-            //TODO... wss.clients.forEach(client => { client.send("Api ws is OK") });
-        }
-        else if (JSON.parse(message).grid) {
-            console.log("GRID!!");
 
+        /**
+         * host player created game grid and sends it to their opponent
+         */
+        hostPlayerCreatedGrid = () => {
             let grid = JSON.parse(message).grid;
             let opponentID = JSON.parse(message).opponentID;
 
             if (activeUsers.users[opponentID]) {
-                console.log(grid);
-                console.log(`data will be send to ${opponentID}`);
                 let opponent = [...wss.clients].find(c => c._sockname === opponentID);
                 opponent.send(
                     Buffer.from(JSON.stringify({
                         grid: grid
                     })));
             }
+        }
+
+        /**
+         * whenever after a game is started one of the players lose focus on game
+         * the other is notified in orfer to stop app.ticker
+         */
+        focusChange = () => {
+            let focus = JSON.parse(message).appFocusedChanged.appFocused;
+            let opponentID = JSON.parse(message).appFocusedChanged.opponentID;
+
+            if (activeUsers.users[opponentID]) {
+                let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                opponent.send(
+                    Buffer.from(JSON.stringify({
+                        opponentFocusChanged: {
+                            focus: focus
+                        }
+                    })));
+            }
+        }
+
+        if (JSON.parse(message).user) {
+            newUserOrClubSelectionChange();
+        }
+        else if (JSON.parse(message).grid) {
+            hostPlayerCreatedGrid();
+        }
+        else if (JSON.parse(message).appFocusedChanged) {
+            focusChange();
         }
     });
 
@@ -443,14 +437,13 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         // IMPORTANT...
         // TODO - clear incomplete games, as well for client after game is finished!!!!!
-       //todo - reset isPlaying property
+        //todo - reset isPlaying property
+        //todo - if is in active game - remove gameId from activeGames and send message "opponent left the game" to the other player
         delete activeUsers.users[ws._sockname];
         wss.clients.forEach(client => {
             client.send(Buffer.from(JSON.stringify(activeUsers)));
         });
         console.log(`Users online => ${JSON.stringify(activeUsers)}`);
-        console.log("CLOSED!");
+        console.log(`${ws._sockname} LEFT!`);
     });
-
-
 });

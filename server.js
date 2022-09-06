@@ -316,9 +316,9 @@ let activeGames = {};
 wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         /**
-         * new user entered PvP room or
-         * another user selected club
-         */
+        * new user entered PvP room or
+        * another user selected club
+        */
         newUserOrClubSelectionChange = () => {
             let user = JSON.parse(message).user.user;
             let team = JSON.parse(message).user.team;
@@ -419,6 +419,47 @@ wss.on('connection', (ws) => {
             }
         }
 
+        /**
+         * when one player performs succesful blocks swap,
+         * we send positions of the move to the other player
+         */
+        successfulMatch = () => {
+            let moveData = JSON.parse(message).moveData;
+            let opponentID = JSON.parse(message).opponentID;
+            console.log(`matches =>> ${moveData}`);
+
+            if (activeUsers.users[opponentID]) {
+                let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                opponent.send(
+                    Buffer.from(JSON.stringify(
+                        {
+                            moveData: moveData
+                        }
+                    )));
+            }
+        }
+
+        /**
+         * after matching block one player creates new blocks,
+         * here we send them to the other player
+         */
+        newBlocksCreated = () => {
+            let newBlocks = JSON.parse(message).newBlocks;
+            let opponentID = JSON.parse(message).opponentID;
+            console.log(`newBlocks =>> ${newBlocks}`);
+
+            if (activeUsers.users[opponentID]) {
+                console.log("newblocks!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                opponent.send(
+                    Buffer.from(JSON.stringify(
+                        {
+                            newBlocks: newBlocks
+                        }
+                    )));
+            }
+        }
+
         if (JSON.parse(message).user) {
             newUserOrClubSelectionChange();
         }
@@ -427,6 +468,12 @@ wss.on('connection', (ws) => {
         }
         else if (JSON.parse(message).appFocusedChanged) {
             focusChange();
+        }
+        else if (JSON.parse(message).moveData) {
+            successfulMatch();
+        }
+        else if (JSON.parse(message).newBlocks) {
+            newBlocksCreated();
         }
     });
 
@@ -447,3 +494,39 @@ wss.on('connection', (ws) => {
         console.log(`${ws._sockname} LEFT!`);
     });
 });
+
+generateRandomColorBlock = () => {
+    let x = Math.floor(Math.random() * 100) + 1;
+    let a;
+    switch (true) {
+        //blocks - 18%       yellow card - 6%     red card- 2%      injury - 2%
+        case x <= 18:
+            a = "ball_blue";
+            break;
+        case (x > 18 && x <= 36):
+            a = "ball_green";
+            break;
+        case x > 36 && x <= 54:
+            a = "ball_purple";
+            break;
+        case x > 54 && x <= 72:
+            a = "ball_red";
+            break;
+        case x > 72 && x <= 90:
+            a = "ball_yellow";
+            break;
+        case x > 90 && x <= 96:
+            a = "yellow_card";
+            break;
+        case x > 96 && x <= 98:
+            a = "red_card";
+            break;
+        case x > 98 && x <= 100:
+            a = "red_cross";
+            break;
+        default:
+            a = "error";
+            break;
+    }
+    return a;
+}

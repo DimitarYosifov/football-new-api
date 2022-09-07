@@ -501,6 +501,9 @@ wss.on('connection', (ws) => {
                 let users = game.split("/");
                 let opponentID = users.find(u => u !== ws._sockname);
                 let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                if (!opponent) {
+                    return;
+                }
                 opponent.send(
                     Buffer.from(JSON.stringify(
                         {

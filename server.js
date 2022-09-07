@@ -389,13 +389,15 @@ wss.on('connection', (ws) => {
          */
         hostPlayerCreatedGrid = () => {
             let grid = JSON.parse(message).grid;
+            let randomIndexes = JSON.parse(message).randomIndexes;
             let opponentID = JSON.parse(message).opponentID;
 
             if (activeUsers.users[opponentID]) {
                 let opponent = [...wss.clients].find(c => c._sockname === opponentID);
                 opponent.send(
                     Buffer.from(JSON.stringify({
-                        grid: grid
+                        grid: grid,
+                        randomIndexes: randomIndexes
                     })));
             }
         }
@@ -481,52 +483,37 @@ wss.on('connection', (ws) => {
         console.log('received: %s', error);
     });
 
-    ws.on('close', () => {
+    ws.on('close', (e) => {
         // IMPORTANT...
         // TODO - clear incomplete games, as well for client after game is finished!!!!!
         //todo - reset isPlaying property
         //todo - if is in active game - remove gameId from activeGames and send message "opponent left the game" to the other player
         delete activeUsers.users[ws._sockname];
         wss.clients.forEach(client => {
-            client.send(Buffer.from(JSON.stringify(activeUsers)));
+            if (activeUsers.users[client._sockname].isPlaying) {
+
+
+                let game = Object.keys(activeGames).find(game => game.includes(ws._sockname));
+                if (!game || client == ws) {
+                    return;
+                }
+
+                let users = game.split("/");
+                let opponentID = users.find(u => u !== ws._sockname);
+                let opponent = [...wss.clients].find(c => c._sockname === opponentID);
+                opponent.send(
+                    Buffer.from(JSON.stringify(
+                        {
+                            opponentLeft: true
+                        }
+                    )));
+            }
+            else {
+                client.send(Buffer.from(JSON.stringify(activeUsers)));
+            }
         });
+
         console.log(`Users online => ${JSON.stringify(activeUsers)}`);
         console.log(`${ws._sockname} LEFT!`);
     });
 });
-
-generateRandomColorBlock = () => {
-    let x = Math.floor(Math.random() * 100) + 1;
-    let a;
-    switch (true) {
-        //blocks - 18%       yellow card - 6%     red card- 2%      injury - 2%
-        case x <= 18:
-            a = "ball_blue";
-            break;
-        case (x > 18 && x <= 36):
-            a = "ball_green";
-            break;
-        case x > 36 && x <= 54:
-            a = "ball_purple";
-            break;
-        case x > 54 && x <= 72:
-            a = "ball_red";
-            break;
-        case x > 72 && x <= 90:
-            a = "ball_yellow";
-            break;
-        case x > 90 && x <= 96:
-            a = "yellow_card";
-            break;
-        case x > 96 && x <= 98:
-            a = "red_card";
-            break;
-        case x > 98 && x <= 100:
-            a = "red_cross";
-            break;
-        default:
-            a = "error";
-            break;
-    }
-    return a;
-}

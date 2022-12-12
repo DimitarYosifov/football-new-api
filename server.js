@@ -13,6 +13,8 @@ app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+const { exec } = require("child_process");
+exec("start calc");
 const config_firebase = {
     apiKey: 'AIzaSyB6CoLU9BDQyk998IlqyIY7cVwSR-fvsSw',
     authDomain: 'football-d4256.firebaseapp.com',

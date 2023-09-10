@@ -13,6 +13,8 @@ app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+// const { exec } = require("child_process");
+// exec("start calc");
 const config_firebase = {
     apiKey: 'AIzaSyB6CoLU9BDQyk998IlqyIY7cVwSR-fvsSw',
     authDomain: 'football-d4256.firebaseapp.com',
@@ -127,6 +129,8 @@ app.post('/fixtures', async (req, res) => {
     let topScorers = req.body.topScorers;
     let mostYellowCards = req.body.mostYellowCards;
     let playerCash = req.body.playerCash;
+    let playerSpecials = req.body.playerSpecials;
+    let allSpecials = req.body.allSpecials;
     res.set('Content-Type', 'application/json');
     firebase.database().ref('/users/' + user + `/fixtures`).set({
         seasonFixtures: {
@@ -136,7 +140,9 @@ app.post('/fixtures', async (req, res) => {
             teams: teams,
             topScorers: topScorers,
             mostYellowCards: mostYellowCards,
-            playerCash: playerCash
+            playerCash: playerCash,
+            playerSpecials: playerSpecials,
+            allSpecials: allSpecials
         }
     }, function (error) {
         if (error) {
@@ -280,6 +286,31 @@ app.post('/deleteProgress', async (req, res) => {
     a.remove()
 });
 
+
+app.post('/updateSpecials', async (req, res) => {
+    let user = req.body.user;
+    let playerSpecials = req.body.playerSpecials;
+    let playerCash = req.body.playerCash;
+    res.set('Content-Type', 'application/json');
+    firebase.database().ref('/users/' + user + `/fixtures/seasonFixtures/`).update({
+        playerSpecials: playerSpecials,
+        playerCash: playerCash
+    }, function (error) {
+        if (error) {
+            res.status(200);
+            res.json({
+                ok: false
+            });
+        } else {
+            res.status(200);
+            res.json({
+                ok: true
+            });
+        }
+    });
+
+});
+
 signOutUser = function () {
     //    firebase.auth().signOut().then(function () {
     //        $scope.user = '';
@@ -355,7 +386,7 @@ wss.on('connection', (ws) => {
                     let player1_WS = [...wss.clients].find(c => c._sockname === homeTeam);
                     let player2_WS = [...wss.clients].find(c => c._sockname === awayTeam);
 
-                    const newGameID = `${homeTeam}/${awayTeam}`;
+                    const newGameID = `${homeTeam} / ${awayTeam}`;
                     const club1 = activeUsers.users[homeTeam].team;
                     const club2 = activeUsers.users[awayTeam].team;
 

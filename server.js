@@ -283,7 +283,9 @@ app.post('/getPlayerLineUp', async (req, res) => {
 app.post('/deleteProgress', async (req, res) => {
     let user = req.body.user;
     let a = firebase.database().ref('/users/' + user + `/fixtures`);
+    let b = firebase.database().ref('/users/' + user + `/lineUp`);
     a.remove()
+    b.remove()
 });
 
 

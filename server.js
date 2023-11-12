@@ -292,9 +292,11 @@ app.post('/deleteProgress', async (req, res) => {
 app.post('/updateSpecials', async (req, res) => {
     let user = req.body.user;
     let playerSpecials = req.body.playerSpecials;
+    let allSpecials = req.body.allSpecials;
     let playerCash = req.body.playerCash;
     res.set('Content-Type', 'application/json');
     firebase.database().ref('/users/' + user + `/fixtures/seasonFixtures/`).update({
+        allSpecials: allSpecials,
         playerSpecials: playerSpecials,
         playerCash: playerCash
     }, function (error) {

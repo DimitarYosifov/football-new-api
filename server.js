@@ -284,8 +284,34 @@ app.post('/deleteProgress', async (req, res) => {
     let user = req.body.user;
     let a = firebase.database().ref('/users/' + user + `/fixtures`);
     let b = firebase.database().ref('/users/' + user + `/lineUp`);
-    a.remove()
-    b.remove()
+
+    a.remove().then(() => {
+        console.log(`Data deleted from user ${user} => /fixtures`);
+        res.status(200);
+        res.json({
+            ok: true
+        });
+    }).catch((error) => {
+        console.error(`Error deleting data from ${user} => /fixtures`, error);
+        res.status(200);
+        res.json({
+            ok: false
+        });
+    });
+
+    b.remove().then(() => {
+        console.log(`Data deleted from user ${user} => /lineUp`);
+        res.status(200);
+        res.json({
+            ok: true
+        });
+    }).catch((error) => {
+        console.error(`Error deleting data from ${user} => /lineUp`, error);
+        res.status(200);
+        res.json({
+            ok: false
+        });
+    });
 });
 
 
